@@ -5,12 +5,12 @@ library(tidyverse)
 library(tsibble)
 library(hts)
 library(fabletools)
+library(dplyr)
 
 #V3 con pourpose of travel
 #AT <- read.csv("D:/Documenti/Tesina/TourismData_v3.csv")
 #v4 del prof
-AT <- read.csv("D:/Documenti/Tesina/TourismData_v4.csv")
-AT <- AT[,2:79]
+AT <- read.csv("D:/Documenti/Tesina/TourismData_v4.csv")[2:79]
 colnames(AT)[1:2] <- c("Year", "Month")
 #-----------------------------------------------------
 #Esplorazione dei dati
@@ -25,28 +25,54 @@ for (j in 1:240) {
 
 #Creazione di una variabile che possa fare da indice per le serie storiche
 ##
-#AT$Index = paste(as.character(AT$Year), AT$Month, sep = " ")
+AT$Index = paste(as.character(AT$Year), AT$Month, sep = " ")
 
-#AT %>%
-#  mutate(Index = yearmonth(Index)) %>%
-#  as_tsibble(index = Index) -> AT
+AT %>%
+  mutate(Index = yearmonth(Index)) %>%
+  as_tsibble(index = Index) -> AT_ts
 
 #Fare alcune considerazioni circa la struttura dei dati, come sono divisi, i motivi del
 #viaggio e le regioni australiane ecc e poi plottare
-#Hir <- hts(OnlyData, BottomNames, characters = c(1,1,1))
-#par(mfrow = c(2,2))
-#plot.gts(Hir, levels = 0)
-#plot.gts(Hir, levels = 1)
-#plot.gts(Hir, levels = 2)
-#plot.gts(Hir, levels = 3)
+
+par(mfrow = c(2,2))
+
+#####PLOT LIVELLO DISAGGREGATO#########
+diss_plot <- AT_ts[,c(1:3,79)] %>%
+  mutate(AAA = AAA/100)
+autoplot(diss_plot, AAA) +
+  labs(title = "AAA Tourism flow",
+       y = "Passengers", x = "Year")
+
+
+#####PLOT TOTAL################
+OnlyData <- AT[,3:78]
+AT_hts <- hts(OnlyData, characters = c(1,1,1),BottomNames)
+#Summing matrix
+AT_hts %>%
+  smatrix(.)
+
+Lev0 <- AT_hts %>%
+  aggts(levels = 0) %>%
+  as_tsibble()
+
+Lev0$index <- AT$Index
+
+Lev0 %>%
+  mutate(index = yearmonth(index)) %>%
+  as_tsibble(index = index) -> Lev0
+
+autoplot(Lev0, value) +
+  labs(title = "Total flow Australian tourism",
+       y = "Passengers", x = "Year")
+
 
 #view(tourism)
 #dim(tourism)
 #dim(AT)
 
-OnlyData <- AT[,3:78]
-
-AT[,3:78] %>%
+#############################################################################
+#Forecasting experiment
+OnlyData %>%
   colnames() %>%
   as.list() -> BottomNames
 
@@ -64,8 +90,10 @@ data_bts <- data.frame(State = c(BottomNames %>%
                                   )
                        )
 
-
 Cmatrix( ~ State/Zones/Region, data_bts, sep = "")
+
+
+
 
 
 
