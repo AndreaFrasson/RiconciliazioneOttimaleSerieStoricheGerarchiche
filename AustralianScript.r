@@ -7,9 +7,14 @@ library(hts)
 library(fabletools)
 library(dplyr)
 library(splitTools)
+library(drat)
+library(xgboost)
+library(randomForest)
 
-#v4 del prof
-AT <- read.csv("C:/Users/Andrea Frasson/Desktop/Tesina/TourismData_v4.csv")[2:79]
+
+
+#v4 
+AT <- read.csv("D:/Documenti/Tesina/TourismData_v4.csv")[2:79]
 colnames(AT)[1:2] <- c("Year", "Month")
 #-----------------------------------------------------
 #Esplorazione dei dati
@@ -67,26 +72,51 @@ autoplot(Lev0, value) +
        y = "Passengers", x = "Year")
 
 #############################################################################
-#Forecasting experiment
+#rolling-origin evaluation approach
+OnlyData <- AT[,3:78]
 OnlyData %>%
   colnames() %>%
   as.list() -> BottomNames
 
-data_bts <- data.frame(State = c(BottomNames %>%
+name_bts <- data.frame(State = c(BottomNames %>%
                                    gsub('.{2}$', '',.)
-),
+                                ),
+                                
+                                Zones = c(BottomNames %>%
+                                            gsub('^.', '',.) %>%
+                                            gsub('.$', '',.)
+                                ),
+                                
+                                Region = c(BottomNames %>%
+                                             gsub('^.{2}', '',.)
+                                )
+                      )
 
-Zones = c(BottomNames %>%
-            gsub('^.', '',.) %>%
-            gsub('.$', '',.)
-),
+C <- Cmatrix( ~ State/Zones/Region, name_bts, sep = "")
 
-Region = c(BottomNames %>%
-             gsub('^.{2}', '',.)
-)
-)
+#Divisione del dataset in una parte di train e una parte di test
+set.seed(5)
+inds <- partition(AT$AAA, p = c(train = 0.7, test = 0.3), type = "blocked")
+train <- AT[inds$train, 3:78]
+test <- AT[inds$test, 3:78]
 
-C <- Cmatrix( ~ State/Zones/Region, data_bts, sep = "")
+#Previsioni per il set di train, con un modello arima stimato dalla funzione
+fit <- lapply(1:76, function(i) auto.arima(train[,i]))
+f_bts <- lapply(1:76, function(i) forecast(train[,i], h = 1, model = fit[[i]], level = 0.95)$mean)
+f_bts %>%
+  as.matrix() %>%
+  t() %>%
+  htsrec(., comb = "bu", C = C)
+
+
+as.vector(f_bts)
+m <- auto.arima(train$AAA)
+f <- forecast(train$AAA, h = 1, model = m)$mean
+
+dim(C)
+length(f_bts)
+
+
 
 
 
