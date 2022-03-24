@@ -66,10 +66,6 @@ autoplot(Lev0, value) +
   labs(title = "Total flow Australian tourism",
        y = "Passengers", x = "Year")
 
-#view(tourism)
-#dim(tourism)
-#dim(AT)
-
 #############################################################################
 #Forecasting experiment
 OnlyData %>%
