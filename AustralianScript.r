@@ -10,7 +10,7 @@ library(splitTools)
 library(drat)
 library(xgboost)
 library(randomForest)
-
+source("C:/Users/and99/Desktop/Utility.r")
 
 
 #v4 
@@ -80,17 +80,17 @@ OnlyData %>%
 
 name_bts <- data.frame(State = c(BottomNames %>%
                                    gsub('.{2}$', '',.)
-                                ),
-                                
-                                Zones = c(BottomNames %>%
-                                            gsub('^.', '',.) %>%
-                                            gsub('.$', '',.)
-                                ),
-                                
-                                Region = c(BottomNames %>%
-                                             gsub('^.{2}', '',.)
-                                )
-                      )
+),
+
+Zones = c(BottomNames %>%
+            gsub('^.', '',.) %>%
+            gsub('.$', '',.)
+),
+
+Region = c(BottomNames %>%
+             gsub('^.{2}', '',.)
+)
+)
 
 C <- Cmatrix( ~ State/Zones/Region, name_bts, sep = "")
 
@@ -98,29 +98,32 @@ C <- Cmatrix( ~ State/Zones/Region, name_bts, sep = "")
 #DIVISIONE DEL DATASET IN UNA PARTE DI TRAIN E UNA PARTE DI TEST
 #CREAZIONE DELLE GERARCHIE PER EFFETTUARE LE PREVISIONI
 set.seed(5)
-inds <- partition(AT$AAA, p = c(train = 0.7, test = 0.3), type = "blocked")
+inds <- partition(AT$AAA, p = c(train = 0.9, test = 0.1), type = "blocked")
 
 train_bts <- AT[inds$train, 3:78]
-sapply(1:168, function(i) as.matrix(C) %*% as.matrix(t(train_bts[i, ])) ) %>%
+sapply(1:nrow(train_bts), function(i) as.matrix(C) %*% as.matrix(t(train_bts[i, ])) ) %>%
   t() -> train_uts
 colnames(train_uts) <- C@Dimnames[[1]]
 hts_train <- cbind(train_uts, train_bts)
 
 test_bts <- AT[inds$test, 3:78]
-sapply(1:168, function(i) as.matrix(C) %*% as.matrix(t(test_bts[i, ])) ) %>%
+sapply(1:nrow(test_bts), function(i) as.matrix(C) %*% as.matrix(t(test_bts[i, ])) ) %>%
   t() -> test_uts
 colnames(test_uts) <- C@Dimnames[[1]]
 hts_test <- cbind(test_uts, test_bts)
 
 #PREVISIONI BASE PER IL SET DI TRAIN CON ORIZZONTE DI PREVISIONE h = 1
-fitted <- lapply(1:105, function(i) auto.arima(hts_train[,i]))
-basef <- lapply(1:105, function(i) forecast(hts_train[,i], h = 1, model = fit[[i]], level = 0.95)$mean)
+fitted <- lapply(1:ncol(hts_train), function(i) auto.arima(hts_train[,i]))
+basef <- lapply(1:ncol(hts_train), function(i) forecast(hts_train[,i], h = 1, model = fitted[[i]], level = 0.95)$mean)
 
 #RICONCILIAZIONE BOTTOM-UP
 basef[1:105] %>%
   as.double() %>%
   t()%>%
   htsrec(., comb = "bu", C = C) -> cs_bu
+
+#MASE PER IL TOTALE
+getMASE(cs_bu$recf, hts_test[1,], hts_train ,dim(hts_train)[1], 1)
 
 
 ### RICONCILIAZIONE TOP-DOWN
@@ -131,8 +134,6 @@ obs_1 <- FoReco_data$obs$k1
 # average historical proportions
 props <- colMeans(obs_1[1:168,-c(1:3)]/obs_1[1:168,1])
 cs_td <- tdrec(topf = mbase[,1], C = C, weights = props)
-
-
 
 
 
