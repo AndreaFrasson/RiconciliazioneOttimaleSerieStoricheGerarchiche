@@ -94,27 +94,45 @@ name_bts <- data.frame(State = c(BottomNames %>%
 
 C <- Cmatrix( ~ State/Zones/Region, name_bts, sep = "")
 
-#Divisione del dataset in una parte di train e una parte di test
+
+#DIVISIONE DEL DATASET IN UNA PARTE DI TRAIN E UNA PARTE DI TEST
+#CREAZIONE DELLE GERARCHIE PER EFFETTUARE LE PREVISIONI
 set.seed(5)
 inds <- partition(AT$AAA, p = c(train = 0.7, test = 0.3), type = "blocked")
-train <- AT[inds$train, 3:78]
-test <- AT[inds$test, 3:78]
 
-#Previsioni per il set di train, con un modello arima stimato dalla funzione
-fit <- lapply(1:76, function(i) auto.arima(train[,i]))
-f_bts <- lapply(1:76, function(i) forecast(train[,i], h = 1, model = fit[[i]], level = 0.95)$mean)
-f_bts %>%
-  as.matrix() %>%
-  t() %>%
-  htsrec(., comb = "bu", C = C)
+train_bts <- AT[inds$train, 3:78]
+sapply(1:168, function(i) as.matrix(C) %*% as.matrix(t(train_bts[i, ])) ) %>%
+  t() -> train_uts
+colnames(train_uts) <- C@Dimnames[[1]]
+hts_train <- cbind(train_uts, train_bts)
+
+test_bts <- AT[inds$test, 3:78]
+sapply(1:168, function(i) as.matrix(C) %*% as.matrix(t(test_bts[i, ])) ) %>%
+  t() -> test_uts
+colnames(test_uts) <- C@Dimnames[[1]]
+hts_test <- cbind(test_uts, test_bts)
+
+#PREVISIONI BASE PER IL SET DI TRAIN CON ORIZZONTE DI PREVISIONE h = 1
+fitted <- lapply(1:105, function(i) auto.arima(hts_train[,i]))
+basef <- lapply(1:105, function(i) forecast(hts_train[,i], h = 1, model = fit[[i]], level = 0.95)$mean)
+
+#RICONCILIAZIONE BOTTOM-UP
+basef[1:105] %>%
+  as.double() %>%
+  t()%>%
+  htsrec(., comb = "bu", C = C) -> cs_bu
 
 
-as.vector(f_bts)
-m <- auto.arima(train$AAA)
-f <- forecast(train$AAA, h = 1, model = m)$mean
+### RICONCILIAZIONE TOP-DOWN
+# monthly base forecasts
+id <- which(simplify2array(strsplit(colnames(FoReco_data$base), split = "_"))[1, ] == "k1")
+mbase <- t(FoReco_data$base[, id])
+obs_1 <- FoReco_data$obs$k1
+# average historical proportions
+props <- colMeans(obs_1[1:168,-c(1:3)]/obs_1[1:168,1])
+cs_td <- tdrec(topf = mbase[,1], C = C, weights = props)
 
-dim(C)
-length(f_bts)
+
 
 
 
