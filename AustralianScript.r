@@ -102,7 +102,7 @@ C <- Cmatrix( ~ State/Zones/Region, name_bts, sep = "")
 #DIVISIONE DEL DATASET IN UNA PARTE DI TRAIN E UNA PARTE DI TEST
 #CREAZIONE DELLE GERARCHIE PER EFFETTUARE LE PREVISIONI
 set.seed(5)
-inds <- partition(AT$AAA, p = c(train = 0.9, test = 0.1), type = "blocked")
+inds <- partition(AT$AAA, p = c(train = 0.85, test = 0.15), type = "blocked")
 
 train_bts <- AT[inds$train, 3:78]
 sapply(1:nrow(train_bts), function(i) as.matrix(C) %*% as.matrix(t(train_bts[i, ])) ) %>%
@@ -116,49 +116,66 @@ sapply(1:nrow(test_bts), function(i) as.matrix(C) %*% as.matrix(t(test_bts[i, ])
 colnames(test_uts) <- C@Dimnames[[1]]
 hts_test <- cbind(test_uts, test_bts)
 
-#PREVISIONI BASE PER IL SET DI TRAIN CON ORIZZONTE DI PREVISIONE h = 1
+#####################################################################
+#########     Forecasting experiment      ###########################
+#####################################################################
+
+#PREVISIONI BASE PER IL SET DI TRAIN CON ORIZZONTE DI PREVISIONE h = 36
 fitted <- lapply(1:ncol(hts_train), function(i) auto.arima(hts_train[,i]))
-basef <- lapply(1:ncol(hts_train), function(i) forecast(hts_train[,i], h = 1, model = fitted[[i]], level = 0.95)$mean)
-lapply(1:ncol(hts_train), function(i) forecast(hts_train[,i], h = 1, model = fitted[[i]], level = 0.95)$residuals) %>%
-  unlist() %>%
-  matrix(ncol = 105, ) -> Mres
+
+basef <- lapply(1:ncol(hts_train), function(i) forecast(hts_train[,i], h = 36, model = fitted[[i]], level = 0.95)$mean)
+
+sapply(1:36, function(i) as.double(basef[[1]][i])) %>%
+  as.matrix() -> M_basef
+for(j in 2:105) {
+  M_basef <- cbind(M_basef, sapply(1:168, function(i) as.double(basef[[j]][i])))
+}
+
+colnames(M_basef) <- colnames(hts_test)
+
+
+#Costruzione matrice di residui
+Mres <- lapply(1:ncol(hts_train), function(i) forecast(hts_train[,i], h = 36, model = fitted[[i]], level = 0.95)$residuals)
+sapply(1:nrow(hts_train), function(i) as.double(Mres[[1]][i])) %>%
+  as.matrix() -> RES
+for(j in 2:105) {
+    RES <- cbind(RES, sapply(1:nrow(hts_train), function(i) as.double(Mres[[j]][i])))
+}
+
+###
+
+##############################################
+##Riconciliazione
 
 #RICONCILIAZIONE BOTTOM-UP
-basef %>%
-  as.double() %>%
-  t()%>%
+M_basef %>%
   htsrec(., comb = "bu", C = C) -> cs_bu
 
-#MASE PER IL TOTALE
-Metrics::mase(actual = hts_test[1,], predicted = cs_bu$recf, step_size = 1)
+#MASE PER 1 PASSO DI PREVISIONE
+Metrics::mase(actual = hts_test, predicted = cs_bu$recf[1,], step_size = 1)
 
 
 ### RICONCILIAZIONE TOP-DOWN
 # average historical proportions
-props <- colMeans(hts_train[1:216,-c(1:29)]/hts_train[1:216,1])
-basef[1] %>%
-  as.double() %>%
-  t()%>%
+props <- colMeans(hts_train[1:nrow(hts_train),-c(1:29)]/hts_train[1:nrow(hts_train),1])
+M_basef[,1] %>%
   tdrec(., C = C, weights = props) -> cs_td
 
-Metrics::mase(actual = hts_test[1,], predicted = cs_td, step_size = 1)
-
+Metrics::mase(actual = hts_test, predicted = cs_td, step_size = 1)
+#Errore per il totale
+Metrics::mase(actual = hts_test[,1], predicted = cs_td[,1], step_size = 1)
 
 #MINT SAMPLE
-basef %>%
-  as.double() %>%
-  t() %>%
-  htsrec(., comb = "sam", C = C, res = Mres) -> cs_minsam
+M_basef %>%
+  htsrec(., comb = "sam", C = C, res = RES) -> cs_minsam
 
-Metrics::mase(actual = hts_test[1,], predicted = cs_minsam$recf, step_size = 1)
+Metrics::mase(actual = hts_test, predicted = cs_minsam$recf, step_size = 1)
 
 #MINT SHRINK
-basef %>%
-  as.double() %>%
-  t() %>%
-  htsrec(., comb = "shr", C = C, res = Mres) -> cs_minshr
+M_basef %>%
+  htsrec(., comb = "shr", C = C, res = RES) -> cs_minshr
 
-Metrics::mase(actual = hts_test[1,], predicted = cs_minshr$recf, step_size = 1)
+Metrics::mase(actual = hts_test, predicted = cs_minshr$recf, step_size = 1)
 
 #ML RANDOM FOREST
 
