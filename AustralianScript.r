@@ -11,9 +11,8 @@ library(drat)
 library(xgboost)
 library(randomForest)
 
-#V3 con pourpose of travel
-#AT <- read.csv("D:/Documenti/Tesina/TourismData_v3.csv")
-#v4 del prof
+
+#v4
 AT <- read.csv("C:/Users/Andrea Frasson/Desktop/Tesina/TourismData_v4.csv")[2:79]
 colnames(AT)[1:2] <- c("Year", "Month")
 #-----------------------------------------------------
