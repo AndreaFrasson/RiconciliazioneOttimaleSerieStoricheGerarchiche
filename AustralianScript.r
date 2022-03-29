@@ -105,13 +105,6 @@ set.seed(5)
 #####################################################################
 #########     Forecasting experiment      ###########################
 #####################################################################
-
-#PREVISIONI BASE PER IL SET DI TRAIN CON ORIZZONTE DI PREVISIONE h = 36
-fitted <- lapply(1:ncol(hts_train), function(i) auto.arima(hts_train[,i]))
-
-
-h <- 36
-
 for(h in 36:1) {
   
   inds <- partition(AT$AAA, p = c(train = 1-h/nrow(AT), test = h/nrow(AT)), type = "blocked")
@@ -147,11 +140,6 @@ for(h in 36:1) {
   for(j in 2:ncol(hts_train)) {
     RES <- cbind(RES, sapply(1:nrow(hts_train), function(i) as.double(Mres[[j]][i])))
   }
-  
-  ###
-  
-  print(M_basef)
-  print("#####################")
   
   
   ##############################################
