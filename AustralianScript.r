@@ -105,6 +105,16 @@ set.seed(5)
 #####################################################################
 #########     Forecasting experiment      ###########################
 #####################################################################
+
+
+#Data frame per contenere gli errori ai vari istanti di previsione
+Errors <- data.frame(Level0 = double(),
+                     Level1 = double(),
+                     Level2 = double(),
+                     Level3 = double())
+
+
+
 for(h in 36:1) {
   
   inds <- partition(AT$AAA, p = c(train = 1-h/nrow(AT), test = h/nrow(AT)), type = "blocked")
@@ -163,6 +173,8 @@ for(h in 36:1) {
     #MASE PER IL LIVELLO 3
     Metrics::mase(actual = hts_test[,30:105], predicted = cs_bu$recf[,30:105], step_size = 1))
   
+  Errors <- rbind(Errors, mase_bu)
+  
   #RICONCILIAZIONE TOP-DOWN
   # average historical proportions
   props <- colMeans(hts_train[1:nrow(hts_train),-c(1:29)]/hts_train[1:nrow(hts_train),1])
@@ -184,6 +196,8 @@ for(h in 36:1) {
     #MASE PER IL LIVELLO 3
     Metrics::mase(actual = hts_test[,30:105], predicted = cs_td[,30:105], step_size = 1))
   
+  Errors <- rbind(Errors, mase_td)
+  
   
   #MINT SAMPLE
   M_basef %>%
@@ -204,6 +218,9 @@ for(h in 36:1) {
     #MASE PER IL LIVELLO 3
     Metrics::mase(actual = hts_test[,30:105], predicted = cs_minsam$recf[,30:105], step_size = 1))
   
+  Errors <- rbind(Errors, mase_minsam)
+  
+  
   #MINT SHRINK
   M_basef %>%
     htsrec(., comb = "shr", C = C, res = RES) -> cs_minshr
@@ -223,10 +240,62 @@ for(h in 36:1) {
     #MASE PER IL LIVELLO 3
     Metrics::mase(actual = hts_test[,30:105], predicted = cs_minshr$recf[,30:105], step_size = 1))
   
-  Errors <- matrix(c(mase_bu, mase_td, mase_minsam, mase_minshr), ncol = 4, byrow = T)
-  colnames(Errors) <- c("Level 0", "Level 1", "Level 2", "Level 3")
-  rownames(Errors) <- c("BU", "TD", "MinT Sample", "MinT Shrink")
-  print(h)
-  print(Errors)
+  
+  Errors <- rbind(Errors, mase_minshr)
 }
 
+
+inds_bu <- seq(1,nrow(Errors), by = 4)
+inds_td <- seq(2,nrow(Errors), by = 4)
+inds_minsam <- seq(3,nrow(Errors), by = 4)
+inds_minshr<- seq(4,nrow(Errors), by = 4)
+
+
+mean(Errors[inds_bu, 1], na.rm = T)
+mean(Errors[inds_bu, 2], na.rm = T)
+mean(Errors[inds_bu, 3], na.rm = T)
+mean(Errors[inds_bu, 4], na.rm = T)
+
+
+mean(Errors[inds_td, 1], na.rm = T)
+mean(Errors[inds_td, 2], na.rm = T)
+mean(Errors[inds_td, 3], na.rm = T)
+mean(Errors[inds_td, 4], na.rm = T)
+
+
+mean(Errors[inds_minsam, 1], na.rm = T)
+mean(Errors[inds_minsam, 2], na.rm = T)
+mean(Errors[inds_minsam, 3], na.rm = T)
+mean(Errors[inds_minsam, 4], na.rm = T)
+
+
+mean(Errors[inds_minshr, 1], na.rm = T)
+mean(Errors[inds_minshr, 2], na.rm = T)
+mean(Errors[inds_minshr, 3], na.rm = T)
+mean(Errors[inds_minshr, 4], na.rm = T)
+
+
+
+
+
+
+Errors[,5] <- factor(c("BU", "TD", "MinT_Sample", "MinT_Shrink"))
+colnames(Errors) <- c("Lev 0", "Lev 1", "Lev 2", "Lev 3", "")
+
+
+#MASE BOXPLOT PER LA GERARCHIA
+ggplot(Errors, aes(x = Method, y = `Lev 0`)) +     
+  geom_boxplot() +
+  coord_cartesian(ylim = c(0, 1.75))
+
+ggplot(Errors, aes(x = Method, y = `Lev 1`)) +     
+  geom_boxplot() +
+  coord_cartesian(ylim = c(0, 0.75))
+
+ggplot(Errors, aes(x = Method, y = `Lev 2`)) +     
+  geom_boxplot() +
+  coord_cartesian(ylim = c(0, 0.75))
+
+ggplot(Errors, aes(x = Method, y = `Lev 3`)) +     
+  geom_boxplot() +
+  coord_cartesian(ylim = c(0, 0.75))
