@@ -154,14 +154,14 @@ for(h in 36:1) {
   Metrics::mase(actual = hts_test[h,], predicted = cs_bu$recf[h,], step_size = 1)
   
   mase_bu <- c(
-  #MASE PER IL TOTALE
-  Metrics::mase(actual = hts_test[,1], predicted = cs_bu$recf[,1], step_size = 1),
-  #MASE PER IL LIVELLO 1
-  Metrics::mase(actual = hts_test[,2:8], predicted = cs_bu$recf[,2:8], step_size = 1),
-  #MASE PER IL LIVELLO 2
-  Metrics::mase(actual = hts_test[,9:29], predicted = cs_bu$recf[,9:29], step_size = 1),
-  #MASE PER IL LIVELLO 3
-  Metrics::mase(actual = hts_test[,30:105], predicted = cs_bu$recf[,30:105], step_size = 1))
+    #MASE PER IL TOTALE
+    Metrics::mase(actual = hts_test[,1], predicted = cs_bu$recf[,1], step_size = 1),
+    #MASE PER IL LIVELLO 1
+    Metrics::mase(actual = hts_test[,2:8], predicted = cs_bu$recf[,2:8], step_size = 1),
+    #MASE PER IL LIVELLO 2
+    Metrics::mase(actual = hts_test[,9:29], predicted = cs_bu$recf[,9:29], step_size = 1),
+    #MASE PER IL LIVELLO 3
+    Metrics::mase(actual = hts_test[,30:105], predicted = cs_bu$recf[,30:105], step_size = 1))
   
   #RICONCILIAZIONE TOP-DOWN
   # average historical proportions
@@ -229,44 +229,4 @@ for(h in 36:1) {
   print(h)
   print(Errors)
 }
-
-
-
-inds <- partition(AT$AAA, p = c(train = 1-1/nrow(AT), test = 1/nrow(AT)), type = "blocked")
-
-train_bts <- AT[inds$train, 3:78]
-sapply(1:nrow(train_bts), function(i) as.matrix(C) %*% as.matrix(t(train_bts[i, ])) ) %>%
-  t() -> train_uts
-colnames(train_uts) <- C@Dimnames[[1]]
-hts_train <- cbind(train_uts, train_bts)
-
-test_bts <- AT[inds$test, 3:78]
-sapply(1:nrow(test_bts), function(i) as.matrix(C) %*% as.matrix(t(test_bts[i, ])) ) %>%
-  t() -> test_uts
-colnames(test_uts) <- C@Dimnames[[1]]
-hts_test <- cbind(test_uts, test_bts)
-
-fitted <- lapply(1:ncol(hts_train), function(i) auto.arima(hts_train[,i]))
-
-basef <- lapply(1:ncol(hts_train), function(i) forecast(hts_train[,i], h, model = fitted[[i]], level = 0.95)$mean)
-sapply(1:h, function(i) as.double(basef[[1]][i])) %>%
-  as.matrix() -> M_basef
-for(j in 2:ncol(hts_train)) {
-  M_basef <- cbind(M_basef, sapply(1:h, function(i) as.double(basef[[j]][i])))
-}
-colnames(M_basef) <- colnames(hts_test)
-
-
-#Costruzione matrice di residui
-
-Mres <- lapply(1:ncol(hts_train), function(i) forecast(hts_train[,i], h, model = fitted[[i]], level = 0.95)$residuals)
-sapply(1:nrow(hts_train), function(i) as.double(Mres[[1]][i])) %>%
-  as.matrix() -> RES
-for(j in 2:ncol(hts_train)) {
-  RES <- cbind(RES, sapply(1:nrow(hts_train), function(i) as.double(Mres[[j]][i])))
-}
-
-
-#ML RANDOM FOREST
-
 
