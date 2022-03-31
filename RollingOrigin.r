@@ -80,8 +80,10 @@ RollingOrigin <- function(BottomOsservation, h) {
     colnames(test_uts) <- C@Dimnames[[1]]
     hts_test <- cbind(test_uts, test_bts)
     
-    fitted <- lapply(1:ncol(hts_train), function(i) auto.arima(hts_train[,i]))
-    
+    if(t == 36) {
+      fitted <- lapply(1:ncol(hts_train), function(i) auto.arima(hts_train[,i]))
+    }
+                     
     basef <- lapply(1:ncol(hts_train), function(i) forecast(hts_train[,i], t, model = fitted[[i]], level = 0.95)$mean)
     sapply(1:t, function(i) as.double(basef[[1]][i])) %>%
       as.matrix() -> M_basef
