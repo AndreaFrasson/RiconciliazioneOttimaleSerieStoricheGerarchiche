@@ -12,9 +12,8 @@ for (j in 1:240) {
   else Y = AT[j,]$Year
 }
 
-Mase_Errors <- RollingOrigin(AT, 36)
-
-#7:30 circa
+Errors <- RollingOrigin(AT, 36)
+#4:30
 
 
 #-----------------------------------------------------
