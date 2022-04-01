@@ -12,8 +12,98 @@ for (j in 1:240) {
   else Y = AT[j,]$Year
 }
 
+#Stima del modello solamente una volta
 Errors <- RollingOrigin(AT, 36)
 #4:30
+
+method <- factor(c("BU", "TD", "MinTSam", "MinTShr"))
+MASE <- cbind(Errors[[1]], method)
+colnames(MASE) <- c("Livello 0", "Livello 1", "Livello 2", "Livello 3", "method")
+RMSSE <- cbind(Errors[[2]], method)
+colnames(RMSSE) <- c("Livello 0", "Livello 1", "Livello 2", "Livello 3", "method")
+
+#Errori medi per ogni livello con metodi diversi
+#Livello 0
+mean(MASE[MASE$method == "BU", 1])
+mean(MASE[MASE$method == "TD", 1])
+mean(MASE[MASE$method == "MinTSam", 1])
+mean(MASE[MASE$method == "MinTShr", 1])
+
+#Livello 1
+mean(MASE[MASE$method == "BU", 2])
+mean(MASE[MASE$method == "TD", 2])
+mean(MASE[MASE$method == "MinTSam", 2])
+mean(MASE[MASE$method == "MinTShr", 2])
+
+#Livello 2
+mean(MASE[MASE$method == "BU", 3])
+mean(MASE[MASE$method == "TD", 3])
+mean(MASE[MASE$method == "MinTSam", 3])
+mean(MASE[MASE$method == "MinTShr", 3])
+
+#Livello 3
+mean(MASE[MASE$method == "BU", 4])
+mean(MASE[MASE$method == "TD", 4])
+mean(MASE[MASE$method == "MinTSam", 4])
+mean(MASE[MASE$method == "MinTShr", 4])
+
+
+
+#Errori medi per ogni livello con metodi diversi
+#Livello 0
+mean(RMSSE[RMSSE$method == "BU", 1])
+mean(RMSSE[RMSSE$method == "TD", 1])
+mean(RMSSE[RMSSE$method == "MinTSam", 1])
+mean(RMSSE[RMSSE$method == "MinTShr", 1])
+
+#Livello 1
+mean(RMSSE[RMSSE$method == "BU", 2])
+mean(RMSSE[RMSSE$method == "TD", 2])
+mean(RMSSE[RMSSE$method == "MinTSam", 2])
+mean(RMSSE[RMSSE$method == "MinTShr", 2])
+
+#Livello 2
+mean(RMSSE[RMSSE$method == "BU", 3])
+mean(RMSSE[RMSSE$method == "TD", 3])
+mean(RMSSE[RMSSE$method == "MinTSam", 3])
+mean(RMSSE[RMSSE$method == "MinTShr", 3])
+
+#Livello 3
+mean(RMSSE[RMSSE$method == "BU", 4])
+mean(RMSSE[RMSSE$method == "TD", 4])
+mean(RMSSE[RMSSE$method == "MinTSam", 4])
+mean(RMSSE[RMSSE$method == "MinTShr", 4])
+
+
+#Boxplot per livello
+#MASE
+MASE %>%
+  ggplot(aes( x = method, y = `Livello 0`)) +
+  geom_boxplot() 
+MASE %>%
+  ggplot(aes( x = method, y = `Livello 1`)) +
+  geom_boxplot() 
+MASE %>%
+  ggplot(aes( x = method, y = `Livello 2`)) +
+  geom_boxplot() 
+MASE %>%
+  ggplot(aes( x = method, y = `Livello 3`)) +
+  geom_boxplot() 
+
+#RMSSE
+RMSSE %>%
+  ggplot(aes( x = method, y = `Livello 0`)) +
+  geom_boxplot(ylim = c(0,20)) 
+RMSSE %>%
+  ggplot(aes( x = method, y = `Livello 1`)) +
+  geom_boxplot() 
+RMSSE %>%
+  ggplot(aes( x = method, y = `Livello 2`)) +
+  geom_boxplot() 
+RMSSE %>%
+  ggplot(aes( x = method, y = `Livello 3`)) +
+  geom_boxplot() 
+
 
 
 #-----------------------------------------------------
@@ -39,6 +129,8 @@ diss_plot <- AT_ts[,c(1:3,79)] %>%
 autoplot(diss_plot, AAA) +
   labs(title = "AAA Tourism flow",
        y = "Passengers", x = "Year")
+
+
 
 
 #####PLOT TOTAL################
