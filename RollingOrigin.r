@@ -17,7 +17,6 @@ source("Utility.r")
 
 
 RollingOrigin <- function(BottomOsservation, O) {
-  BottomOsservation <- AT
   
   #Generazione della matrice C (e quindi S' = [C | I])
   OnlyData <- BottomOsservation[,3:78]
@@ -41,20 +40,26 @@ RollingOrigin <- function(BottomOsservation, O) {
   
   C <- Cmatrix( ~ State/Zones/Region, name_bts, sep = "")
   
-  #Data frame per contenere gli errori ai vari istanti di previsione
+  #Data frame per contenere gli errori ai vari istanti di previsione per livello
+  
   MASEByLevel <- data.frame(Level0 = double(),
                             Level1 = double(),
                             Level2 = double(),
                             Level3 = double())
+  
   RMSSEByLevel <- data.frame(Level0 = double(),
                             Level1 = double(),
                             Level2 = double(),
                             Level3 = double())
+  
+  AMSEByLevel <- data.frame(Level0 = double(),
+                             Level1 = double(),
+                             Level2 = double(),
+                             Level3 = double())
   h <- 12
   
   for(t in O:1) {
-    
-    t <- 11
+
       
     #Divisione iterativa del dataset in una parte di train e una parte di test
     inds <- partition(BottomOsservation$AAA, p = c(train = 1-t/nrow(AT), test = t/nrow(AT)), type = "blocked")
@@ -71,10 +76,8 @@ RollingOrigin <- function(BottomOsservation, O) {
     colnames(test_uts) <- C@Dimnames[[1]]
     hts_test <- cbind(test_uts, test_bts)
     
-    #if(t == 36) {
     #Aggiornamento dei modelli ad ogni passo, in funzione al dataset di train e di test
     fitted <- lapply(1:ncol(hts_train), function(i) auto.arima(hts_train[,i]))
-    #} 
     
     
     if(h > nrow(hts_test)) {
@@ -106,19 +109,16 @@ RollingOrigin <- function(BottomOsservation, O) {
     M_basef %>%
       htsrec(., comb = "bu", C = C) -> cs_bu
     
-    #MASE PER 1 PASSO DI PREVISIONE GENERALE
-    Metrics::mase(actual = hts_test[1,], predicted = cs_bu$recf[1,], step_size = 1)
-    #MASE PER L'ULTIMO PASSO DI PREVISIONE GENERALE
-    Metrics::mase(actual = hts_test[t,], predicted = cs_bu$recf[t,], step_size = 1)
-    
     mase_bu <- sapply(1:ncol(cs_bu$recf), 
                       function(i) mase(actual = hts_test[1:h,i], predicted = cs_bu$recf[,i], h = t, train = hts_train[,i], s = 12))
     
-    rmsse_bu <- sapply(1:ncol(cs_bu$recf), 
-                      function(i) rmsse(actual = hts_test[1:h,i], predicted = cs_bu$recf[,i], h = t, train = hts_train[,i], s = 12))
+    amse_bu <- sapply(1:ncol(cs_bu$recf), 
+                       function(i) amse(actual = hts_test[1:h,i], predicted = cs_bu$recf[,i], h = t, train = hts_train[,i], s = 12))
+    
      
     MASEByLevel <- rbind(MASEByLevel, c(mase_bu[1], mean(mase_bu[2:8]), mean(mase_bu[9:29]), mean(mase_bu[30:105])))
-    RMSSEByLevel <- rbind(RMSSEByLevel, c(rmsse_bu[1], mean(rmsse_bu[2:8]), mean(rmsse_bu[9:29]), mean(rmsse_bu[30:105])))
+    AMSEByLevel <- rbind(AMSEByLevel, c(amse_bu[1], mean(amse_bu[2:8]), mean(amse_bu[9:29]), mean(amse_bu[30:105])))
+    
     
     #RICONCILIAZIONE TOP-DOWN
     # average historical proportions
@@ -126,80 +126,44 @@ RollingOrigin <- function(BottomOsservation, O) {
     M_basef[,1] %>%
       tdrec(., C = C, weights = props) -> cs_td
     
-    #MASE PER 1 PASSO DI PREVISIONE GENERALE
-    Metrics::mase(actual = hts_test[1,], predicted = cs_td[1,], step_size = 1)
-    #MASE PER 36 PASSO DI PREVISIONE GENERALE
-    Metrics::mase(actual = hts_test[h,], predicted = cs_td[t,], step_size = 1)
     
-    mase_td <- sapply(1:ncol(cs_bu$recf), 
+    mase_td <- sapply(1:ncol(cs_td), 
                       function(i) mase(actual = hts_test[1:h,i], predicted = cs_td[,i], h = t, train = hts_train[,i], s = 12))
     
-    rmsse_td <- sapply(1:ncol(cs_bu$recf), 
-                       function(i) rmsse(actual = hts_test[1:h,i], predicted = cs_td[,i], h = t, train = hts_train[,i], s = 12))
+    amse_td <- sapply(1:ncol(cs_td), 
+                       function(i) amse(actual = hts_test[1:h,i], predicted = cs_td[,i], h = t, train = hts_train[,i], s = 12))
     
     MASEByLevel <- rbind(MASEByLevel, c(mase_td[1], mean(mase_td[2:8]), mean(mase_td[9:29]), mean(mase_td[30:105])))
-    RMSSEByLevel <- rbind(RMSSEByLevel, c(rmsse_td[1], mean(rmsse_td[2:8]), mean(rmsse_td[9:29]), mean(rmsse_td[30:105])))
-    
+    AMSEByLevel <- rbind(AMSEByLevel, c(amse_td[1], mean(amse_td[2:8]), mean(amse_td[9:29]), mean(amse_td[30:105])))    
     
     #MINT SAMPLE
     M_basef %>%
       htsrec(., comb = "sam", C = C, res = RES) -> cs_minsam
-    
-    #MASE PER 1 PASSO DI PREVISIONE GENERALE
-    Metrics::mase(actual = hts_test[1,], predicted = cs_minsam$recf[1,], step_size = 1)
-    #MASE PER 36 PASSO DI PREVISIONE GENERALE
-    Metrics::mase(actual = hts_test[h,], predicted = cs_minsam$recf[t,], step_size = 1)
-    
-    mase_minsam <- sapply(1:ncol(cs_bu$recf), 
+   
+    mase_minsam <- sapply(1:ncol(cs_minsam$recf), 
                       function(i) mase(actual = hts_test[1:h,i], predicted = cs_minsam$recf[,i], h = t, train = hts_train[,i], s = 12))
-    
-    rmsse_minsam <- sapply(1:ncol(cs_bu$recf), 
-                       function(i) rmsse(actual = hts_test[1:h,i], predicted = cs_minsam$recf[,i], h = t, train = hts_train[,i], s = 12))
+ 
+    amse_minsam <- sapply(1:ncol(cs_minsam$recf), 
+                           function(i) amse(actual = hts_test[1:h,i], predicted = cs_minsam$recf[,i], h = t, train = hts_train[,i], s = 12))
     
     MASEByLevel <- rbind(MASEByLevel, c(mase_minsam[1], mean(mase_minsam[2:8]), mean(mase_minsam[9:29]), mean(mase_minsam[30:105])))
-    RMSSEByLevel <- rbind(RMSSEByLevel, c(rmsse_minsam[1], mean(rmsse_minsam[2:8]), mean(rmsse_minsam[9:29]), mean(rmsse_minsam[30:105])))
-    
-    
-    #MINT OLS
-    M_basef %>%
-      htsrec(., comb = "ols", C = C, res = RES) -> cs_minols
-    
-    #MASE PER 1 PASSO DI PREVISIONE GENERALE
-    Metrics::mase(actual = hts_test[1,], predicted = cs_minols$recf[1,], step_size = 1)
-    #MASE PER 36 PASSO DI PREVISIONE GENERALE
-    Metrics::mase(actual = hts_test[h,], predicted = cs_minols$recf[t,], step_size = 1)
-    
-    mase_minols <- sapply(1:ncol(cs_minols$recf), 
-                          function(i) mase(actual = hts_test[1:h,i], predicted = cs_minols$recf[,i], h = t, train = hts_train[,i], s = 12))
-    
-    rmsse_minols <- sapply(1:ncol(cs_minols$recf), 
-                           function(i) rmsse(actual = hts_test[1:h,i], predicted = cs_minols$recf[,i], h = t, train = hts_train[,i], s = 12))
-    
-    MASEByLevel <- rbind(MASEByLevel, c(mase_minols[1], mean(mase_minols[2:8]), mean(mase_minols[9:29]), mean(mase_minols[30:105])))
-    RMSSEByLevel <- rbind(RMSSEByLevel, c(rmsse_minols[1], mean(rmsse_minols[2:8]), mean(rmsse_minols[9:29]), mean(rmsse_minols[30:105])))
-    
+    AMSEByLevel <- rbind(AMSEByLevel, c(amse_minsam[1], mean(amse_minsam[2:8]), mean(amse_minsam[9:29]), mean(amse_minsam[30:105])))    
     
     
     #MINT SHRINK
     M_basef %>%
       htsrec(., comb = "shr", C = C, res = RES) -> cs_minshr
     
-    #MASE PER 1 PASSO DI PREVISIONE GENERALE
-    Metrics::mase(actual = hts_test[1,], predicted = cs_minshr$recf[1,], step_size = 1)
-    #MASE PER 36 PASSO DI PREVISIONE GENERALE
-    Metrics::mase(actual = hts_test[h,], predicted = cs_minshr$recf[t,], step_size = 1)
-    
-    mase_minshr <- sapply(1:ncol(cs_bu$recf), 
+    mase_minshr <- sapply(1:ncol(cs_minshr$recf), 
                           function(i) mase(actual = hts_test[1:h,i], predicted = cs_minshr$recf[,i], h = t, train = hts_train[,i], s = 12))
     
-    rmsse_minshr <- sapply(1:ncol(cs_bu$recf), 
-                           function(i) rmsse(actual = hts_test[1:h,i], predicted = cs_minshr$recf[,i], h = t, train = hts_train[,i], s = 12))
+    amse_minshr <- sapply(1:ncol(cs_minshr$recf), 
+                           function(i) amse(actual = hts_test[1:h,i], predicted = cs_minshr$recf[,i], h = t, train = hts_train[,i], s = 12))
     
     MASEByLevel <- rbind(MASEByLevel, c(mase_minshr[1], mean(mase_minshr[2:8]), mean(mase_minshr[9:29]), mean(mase_minshr[30:105])))
-    RMSSEByLevel <- rbind(RMSSEByLevel, c(rmsse_minshr[1], mean(rmsse_minshr[2:8]), mean(rmsse_minshr[9:29]), mean(rmsse_minshr[30:105])))
-    print(t)
+    AMSEByLevel <- rbind(AMSEByLevel, c(amse_minshr[1], mean(amse_minshr[2:8]), mean(amse_minshr[9:29]), mean(amse_minshr[30:105])))
   }
   
   #Lista di matrici con gli errori per livello di aggregazione
-  return(list(MASEByLevel, RMSSEByLevel))
+  return(list(MASEByLevel, AMSEByLevel))
 }
