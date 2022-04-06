@@ -16,13 +16,15 @@ for (j in 1:240) {
 Errors <- RollingOrigin(AT, 36)
 #4:30
 
-method <- factor(c("BU", "TD", "MinTSam", "MinTShr"))
+method <- factor(c("BU", "TD", "MinTSam" ,"MinTShr"))
 MASE <- cbind(Errors[[1]], method)
 colnames(MASE) <- c("Livello 0", "Livello 1", "Livello 2", "Livello 3", "method")
-RMSSE <- cbind(Errors[[2]], method)
-colnames(RMSSE) <- c("Livello 0", "Livello 1", "Livello 2", "Livello 3", "method")
+AMSE <- cbind(Errors[[2]], method)
+colnames(AMSE) <- c("Livello 0", "Livello 1", "Livello 2", "Livello 3", "method")
 
 #Errori medi per ogni livello con metodi diversi
+
+
 #Livello 0
 mean(MASE[MASE$method == "BU", 1])
 mean(MASE[MASE$method == "TD", 1])
@@ -49,60 +51,60 @@ mean(MASE[MASE$method == "MinTShr", 4])
 
 
 
-#Errori medi per ogni livello con metodi diversi
 #Livello 0
-mean(RMSSE[RMSSE$method == "BU", 1])
-mean(RMSSE[RMSSE$method == "TD", 1])
-mean(RMSSE[RMSSE$method == "MinTSam", 1])
-mean(RMSSE[RMSSE$method == "MinTShr", 1])
+mean(AMSE[AMSE$method == "BU", 1])
+mean(AMSE[AMSE$method == "TD", 1])
+mean(AMSE[AMSE$method == "MinTSam", 1])
+mean(AMSE[AMSE$method == "MinTShr", 1])
 
 #Livello 1
-mean(RMSSE[RMSSE$method == "BU", 2])
-mean(RMSSE[RMSSE$method == "TD", 2])
-mean(RMSSE[RMSSE$method == "MinTSam", 2])
-mean(RMSSE[RMSSE$method == "MinTShr", 2])
+mean(AMSE[AMSE$method == "BU", 2])
+mean(AMSE[AMSE$method == "TD", 2])
+mean(AMSE[AMSE$method == "MinTSam", 2])
+mean(AMSE[AMSE$method == "MinTShr", 2])
 
 #Livello 2
-mean(RMSSE[RMSSE$method == "BU", 3])
-mean(RMSSE[RMSSE$method == "TD", 3])
-mean(RMSSE[RMSSE$method == "MinTSam", 3])
-mean(RMSSE[RMSSE$method == "MinTShr", 3])
+mean(AMSE[AMSE$method == "BU", 3])
+mean(AMSE[AMSE$method == "TD", 3])
+mean(AMSE[AMSE$method == "MinTSam", 3])
+mean(AMSE[AMSE$method == "MinTShr", 3])
 
 #Livello 3
-mean(RMSSE[RMSSE$method == "BU", 4])
-mean(RMSSE[RMSSE$method == "TD", 4])
-mean(RMSSE[RMSSE$method == "MinTSam", 4])
-mean(RMSSE[RMSSE$method == "MinTShr", 4])
+mean(AMSE[AMSE$method == "BU", 4])
+mean(AMSE[AMSE$method == "TD", 4])
+mean(AMSE[AMSE$method == "MinTSam", 4])
+mean(AMSE[AMSE$method == "MinTShr", 4])
+
 
 
 #Boxplot per livello
 #MASE
 MASE %>%
   ggplot(aes( x = method, y = `Livello 0`)) +
-  geom_boxplot() 
+  geom_boxplot(fill = c("cadetblue", "chartreuse2", "darkgoldenrod1", "red2")) 
 MASE %>%
   ggplot(aes( x = method, y = `Livello 1`)) +
-  geom_boxplot() 
+  geom_boxplot(fill = c("cadetblue", "chartreuse2", "darkgoldenrod1", "red2")) 
 MASE %>%
   ggplot(aes( x = method, y = `Livello 2`)) +
-  geom_boxplot() 
+  geom_boxplot(fill = c("cadetblue", "chartreuse2", "darkgoldenrod1", "red2")) 
 MASE %>%
   ggplot(aes( x = method, y = `Livello 3`)) +
-  geom_boxplot() 
+  geom_boxplot(fill = c("cadetblue", "chartreuse2", "darkgoldenrod1", "red2")) 
 
 #RMSSE
-RMSSE %>%
+AMSE %>%
   ggplot(aes( x = method, y = `Livello 0`)) +
-  geom_boxplot(ylim = c(0,20)) 
-RMSSE %>%
+  geom_boxplot(fill = c("cadetblue", "chartreuse2", "darkgoldenrod1", "red2")) 
+AMSE %>%
   ggplot(aes( x = method, y = `Livello 1`)) +
-  geom_boxplot() 
-RMSSE %>%
+  geom_boxplot(fill = c("cadetblue", "chartreuse2", "darkgoldenrod1", "red2")) 
+AMSE %>%
   ggplot(aes( x = method, y = `Livello 2`)) +
-  geom_boxplot() 
-RMSSE %>%
+  geom_boxplot(fill = c("cadetblue", "chartreuse2", "darkgoldenrod1", "red2")) 
+AMSE %>%
   ggplot(aes( x = method, y = `Livello 3`)) +
-  geom_boxplot() 
+  geom_boxplot(fill = c("cadetblue", "chartreuse2", "darkgoldenrod1", "red2")) 
 
 
 
@@ -130,11 +132,16 @@ autoplot(diss_plot, AAA) +
   labs(title = "AAA Tourism flow",
        y = "Passengers", x = "Year")
 
-
+diss_plot <- AT_ts[,c(1:4)] %>%
+  mutate(AAA = AAA/100) %>% 
+  as_tsibble(index = Index)
 
 
 #####PLOT TOTAL################
 OnlyData <- AT[,3:78]
+OnlyData %>%
+  colnames() %>%
+  as.list() -> BottomNames
 AT_hts <- hts(OnlyData, characters = c(1,1,1),BottomNames)
 #Summing matrix
 AT_hts %>%
@@ -153,3 +160,13 @@ Lev0 %>%
 autoplot(Lev0, value) +
   labs(title = "Total flow Australian tourism",
        y = "Passengers", x = "Year")
+
+Lev1 <- AT_hts %>%
+  aggts(levels = 1) %>%
+  as.matrix() 
+
+Lev1$index <- AT$Index
+
+Lev1 %>%
+  mutate(index = yearmonth(index)) %>%
+  as_tsibble(index = AT$Index) -> Lev1
